@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Loupe — Figma to Web comparison tool</title>
+  <meta name="description" content="Compare live web components against Figma frames with pixel-level diffing, heatmap visualization, and CSS property inspection." />
+  <link rel="icon" href="logo.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --indigo: #6366f1;
+      --indigo-dark: #4f46e5;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      --green: #22c55e;
+      --amber: #f59e0b;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      color: var(--gray-900);
+      background: #fff;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--indigo); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* --- Nav --- */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--gray-900);
+      text-decoration: none;
+    }
+    .nav-brand img { width: 32px; height: 32px; border-radius: 6px; }
+    .nav-links { display: flex; gap: 24px; align-items: center; }
+    .nav-links a { font-size: 14px; font-weight: 500; color: var(--gray-700); }
+    .nav-links a:hover { color: var(--indigo); text-decoration: none; }
+    .btn-nav {
+      padding: 8px 18px;
+      background: var(--indigo);
+      color: #fff !important;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .btn-nav:hover { background: var(--indigo-dark); text-decoration: none; }
+
+    /* --- Hero --- */
+    .hero {
+      text-align: center;
+      padding: 80px 24px 60px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .hero img { width: 80px; height: 80px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 24px rgba(99,102,241,0.15); }
+    .hero h1 { font-size: 44px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; }
+    .hero h1 span { color: var(--indigo); }
+    .hero p { font-size: 18px; color: var(--gray-500); max-width: 520px; margin: 0 auto 32px; }
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      display: inline-block;
+      padding: 14px 28px;
+      background: var(--indigo);
+      color: #fff;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: var(--indigo-dark); text-decoration: none; }
+    .btn-secondary {
+      display: inline-block;
+      padding: 14px 28px;
+      background: var(--gray-100);
+      color: var(--gray-700);
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .btn-secondary:hover { background: var(--gray-200); text-decoration: none; }
+
+    /* --- Sections --- */
+    section { padding: 60px 24px; max-width: 960px; margin: 0 auto; }
+    section h2 {
+      font-size: 30px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+    section > p { color: var(--gray-500); font-size: 16px; margin-bottom: 32px; max-width: 600px; }
+
+    /* --- Features grid --- */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+    .feature {
+      padding: 24px;
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      background: var(--gray-50);
+    }
+    .feature h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .feature p {
+      font-size: 14px;
+      color: var(--gray-500);
+      line-height: 1.5;
+    }
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--indigo);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+
+    /* --- How it works --- */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+      counter-reset: step;
+    }
+    .step {
+      position: relative;
+      padding: 20px;
+      border-radius: 12px;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+    }
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--indigo);
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    .step h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .step p { font-size: 13px; color: var(--gray-500); }
+
+    /* --- Download --- */
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .download-card {
+      padding: 24px;
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      text-align: center;
+    }
+    .download-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .download-card p { font-size: 13px; color: var(--gray-500); margin-bottom: 12px; }
+    .download-card a {
+      display: inline-block;
+      padding: 8px 20px;
+      background: var(--indigo);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .download-card a:hover { background: var(--indigo-dark); text-decoration: none; }
+
+    /* --- Docs --- */
+    .docs-section { background: var(--gray-50); border-top: 1px solid var(--gray-200); }
+    .docs-section section { max-width: 720px; }
+    .docs-section h3 { font-size: 18px; font-weight: 600; margin: 28px 0 8px; }
+    .docs-section p, .docs-section li { font-size: 15px; color: var(--gray-700); }
+    .docs-section ul { padding-left: 20px; margin-bottom: 16px; }
+    .docs-section li { margin-bottom: 4px; }
+    .docs-section code {
+      background: var(--gray-200);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+    }
+    .docs-section pre {
+      background: var(--gray-900);
+      color: var(--gray-100);
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    .docs-section pre code { background: none; padding: 0; color: inherit; }
+
+    /* --- Footer --- */
+    footer {
+      text-align: center;
+      padding: 40px 24px;
+      font-size: 13px;
+      color: var(--gray-400);
+      border-top: 1px solid var(--gray-200);
+    }
+    footer a { color: var(--gray-500); }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 32px; }
+      .hero p { font-size: 16px; }
+      nav { padding: 10px 16px; }
+      .nav-links { gap: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-brand">
+    <img src="logo.png" alt="Loupe logo" />
+    Loupe
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how-it-works">How It Works</a>
+    <a href="#download">Download</a>
+    <a href="#docs">Docs</a>
+    <a href="https://github.com/TitaniumCladStudios/loupe" class="btn-nav">GitHub</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <img src="logo.png" alt="Loupe" />
+  <h1>Pixel-perfect <span>Figma to Web</span> comparison</h1>
+  <p>Compare live web components against Figma frames with pixel-level diffing, heatmap visualization, and CSS property inspection.</p>
+  <div class="hero-actions">
+    <a href="https://github.com/TitaniumCladStudios/loupe/releases" class="btn-primary">Download Loupe</a>
+    <a href="#docs" class="btn-secondary">Read the Docs</a>
+  </div>
+</div>
+
+<!-- Features -->
+<section id="features">
+  <h2>Features</h2>
+  <p>Everything you need to close the gap between design and implementation.</p>
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">px</div>
+      <h3>Pixel Diff</h3>
+      <p>Pixel-level comparison using pixelmatch with configurable threshold. See exactly where your implementation diverges from the design.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">&lt;/&gt;</div>
+      <h3>CSS Inspector</h3>
+      <p>Side-by-side comparison of CSS properties extracted from Figma and the live web component. Covers typography, colors, spacing, borders, and effects.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">&#9776;</div>
+      <h3>DOM Inspector</h3>
+      <p>Built-in DOM tree inspector that traverses shadow DOM and iframes. Hover to highlight, click to capture any element on the page.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">&#128200;</div>
+      <h3>Heatmap &amp; Overlay</h3>
+      <p>View results as a diff heatmap, side-by-side comparison, or an overlay with adjustable opacity for onion-skinning.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">F</div>
+      <h3>Figma Plugin</h3>
+      <p>Companion Figma plugin sends frames directly to the app with one click. Works in Dev Mode. Extracts design properties automatically.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">&#128203;</div>
+      <h3>Export for PRs</h3>
+      <p>Copy inspection results as Markdown for GitHub PR comments or plain text for Slack. Exclude irrelevant properties to customize the score.</p>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section id="how-it-works">
+  <h2>How It Works</h2>
+  <p>A five-step wizard guides you through the comparison process.</p>
+  <div class="steps">
+    <div class="step">
+      <h3>Figma</h3>
+      <p>Select a frame in Figma and click "Send to Loupe" in the plugin. The frame image and design properties are sent to the app.</p>
+    </div>
+    <div class="step">
+      <h3>Web</h3>
+      <p>Open a browser to your local dev server. Use the DOM inspector to find and capture any element, even inside shadow DOM or iframes.</p>
+    </div>
+    <div class="step">
+      <h3>Compare</h3>
+      <p>Adjust the diff threshold and run a pixel-level comparison. Both images are auto-trimmed and scaled to match.</p>
+    </div>
+    <div class="step">
+      <h3>Result</h3>
+      <p>View the diff as a heatmap, side-by-side, or overlay. See the similarity percentage and download the diff image.</p>
+    </div>
+    <div class="step">
+      <h3>Inspect</h3>
+      <p>Compare CSS properties between Figma and the web. Toggle properties on/off to customize the score. Export as Markdown for PRs.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Download -->
+<section id="download">
+  <h2>Download</h2>
+  <p>Grab the latest release for your platform.</p>
+  <div class="download-grid">
+    <div class="download-card">
+      <h3>macOS</h3>
+      <p>.dmg installer</p>
+      <a href="https://github.com/TitaniumCladStudios/loupe/releases">Download</a>
+    </div>
+    <div class="download-card">
+      <h3>Windows</h3>
+      <p>.msi / .exe installer</p>
+      <a href="https://github.com/TitaniumCladStudios/loupe/releases">Download</a>
+    </div>
+    <div class="download-card">
+      <h3>Linux</h3>
+      <p>.deb / .rpm / .AppImage</p>
+      <a href="https://github.com/TitaniumCladStudios/loupe/releases">Download</a>
+    </div>
+  </div>
+</section>
+
+<!-- Docs -->
+<div class="docs-section" id="docs">
+  <section>
+    <h2>Documentation</h2>
+
+    <h3>Requirements</h3>
+    <ul>
+      <li>macOS, Windows, or Linux</li>
+      <li>Figma (with access to Dev Mode for the plugin)</li>
+      <li>A locally running web application to compare against</li>
+    </ul>
+
+    <h3>Install the Figma Plugin</h3>
+    <p>The plugin is published to Figma for organizations, or can be loaded locally for development:</p>
+    <ol>
+      <li>Open Figma</li>
+      <li>Go to <strong>Plugins &gt; Development &gt; Import plugin from manifest...</strong></li>
+      <li>Select <code>figma-plugin/manifest.json</code> from the cloned repo</li>
+      <li>The plugin appears under <strong>Plugins &gt; Development &gt; Loupe</strong></li>
+    </ol>
+
+    <h3>Run from Source</h3>
+    <p>Prerequisites: <a href="https://nodejs.org">Node.js</a> 18+ and <a href="https://rustup.rs">Rust</a>.</p>
+
+    <p><strong>Linux (Debian/Ubuntu):</strong></p>
+    <pre><code>sudo apt-get install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev</code></pre>
+
+    <p><strong>Linux (Fedora):</strong></p>
+    <pre><code>sudo dnf install webkit2gtk4.1-devel openssl-devel libappindicator-gtk3-devel librsvg2-devel pango-devel gtk3-devel libsoup3-devel javascriptcoregtk4.1-devel</code></pre>
+
+    <p><strong>Clone and run:</strong></p>
+    <pre><code>git clone https://github.com/TitaniumCladStudios/loupe.git
+cd loupe
+npm install
+npm run tauri dev</code></pre>
+
+    <h3>Using the DOM Inspector</h3>
+    <p>The built-in inspector handles complex web apps:</p>
+    <ul>
+      <li><strong>Shadow DOM</strong> &mdash; expand web components to see their internal elements</li>
+      <li><strong>Iframes</strong> &mdash; the tree traverses into same-origin iframes (e.g. Storybook)</li>
+      <li>Hover a node in the tree to highlight it on the page</li>
+      <li>Click to select, then click <strong>Capture Selected</strong></li>
+    </ul>
+
+    <h3>CSS Property Inspection</h3>
+    <p>The Inspect tab compares CSS properties between Figma and the web capture:</p>
+    <ul>
+      <li><strong>Dimensions</strong> &mdash; width, height</li>
+      <li><strong>Typography</strong> &mdash; font family, size, weight, line height, letter spacing, color</li>
+      <li><strong>Colors</strong> &mdash; background color, opacity</li>
+      <li><strong>Borders</strong> &mdash; width, color, radius</li>
+      <li><strong>Spacing</strong> &mdash; padding, gap</li>
+      <li><strong>Effects</strong> &mdash; box shadow, filters</li>
+    </ul>
+    <p>Uncheck properties or entire categories to exclude them from the similarity score. Use <strong>Copy Markdown</strong> to paste results into GitHub PR comments.</p>
+
+    <h3>Keyboard Shortcuts</h3>
+    <ul>
+      <li>All standard OS shortcuts work (Cmd/Ctrl+Q to quit, etc.)</li>
+      <li><strong>File &gt; Open Output Folder</strong> opens the directory where diffs are saved</li>
+      <li><strong>Help &gt; Loupe on GitHub</strong> opens the project repository</li>
+    </ul>
+
+    <h3>Architecture</h3>
+    <pre><code>loupe/
+├── src/                  # Svelte 5 frontend
+├── src-tauri/            # Rust backend (HTTP server, window management)
+├── figma-plugin/         # Figma plugin
+│   ├── manifest.json
+│   ├── code.js
+│   └── ui.html
+└── package.json</code></pre>
+    <ul>
+      <li><strong>Tauri v2</strong> with Svelte 5 frontend and Rust backend</li>
+      <li><strong>Local HTTP server</strong> on port 7700 receives images and properties</li>
+      <li><strong>pixelmatch</strong> for pixel-level comparison</li>
+      <li><strong>modern-screenshot</strong> for element capture (handles shadow DOM and modern CSS)</li>
+    </ul>
+  </section>
+</div>
+
+<footer>
+  <p>Built by <a href="https://github.com/TitaniumCladStudios">Titanium Clad Studios</a> &middot; <a href="https://github.com/TitaniumCladStudios/loupe">Source on GitHub</a> &middot; MIT License</p>
+</footer>
+
+</body>
+</html>
